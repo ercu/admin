@@ -258,6 +258,9 @@ func (meta *Meta) configure() {
 
 				if fieldType.Kind() == reflect.Struct {
 					result = reflect.New(fieldType).Interface()
+				} else if fieldType.Kind() == reflect.Ptr {
+					refelectType := fieldType.Elem()
+					result = reflect.New(refelectType).Interface()
 				} else if fieldType.Kind() == reflect.Slice {
 					refelectType := fieldType.Elem()
 					for refelectType.Kind() == reflect.Ptr {
@@ -293,7 +296,17 @@ func (meta *Meta) configure() {
 
 	// call field's ConfigureMetaInterface
 	if meta.FieldStruct != nil {
-		if injector, ok := reflect.New(meta.FieldStruct.Struct.Type).Interface().(resource.ConfigureMetaInterface); ok {
+		newRef := reflect.New(meta.FieldStruct.Struct.Type)
+
+		if meta.FieldStruct.Struct.Type.Kind() == reflect.Ptr {
+			newRef = reflect.New(meta.FieldStruct.Struct.Type.Elem())
+		}
+
+		if newRef.Kind() == reflect.Ptr && newRef.IsNil() {
+			newRef.Set(utils.NewValue(newRef.Type()).Elem())
+		}
+
+		if injector, ok := newRef.Interface().(resource.ConfigureMetaInterface); ok {
 			injector.ConfigureQorMeta(meta)
 		}
 	}
